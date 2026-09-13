@@ -66,8 +66,8 @@ ATTRIBUTION = (
 # site is built as f"{PAGES_URL}/tiles/...", and a trailing slash would emit
 # "...guelph-parks-layer//tiles/...", which is the one thing on the page a
 # reader copies verbatim into their editor.
-GITHUB_REPO = "guelph-mapping/guelph-parks-layer"
-PAGES_URL = "https://guelph-mapping.github.io/guelph-parks-layer"
+GITHUB_REPO = "guelph-maps/guelph-parks-layer"
+PAGES_URL = "https://guelph-maps.github.io/guelph-parks-layer"
 
 # WSL distro that has tippecanoe installed (see wsl-setup.md).
 WSL_DISTRO = "Ubuntu"

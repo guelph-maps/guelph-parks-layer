@@ -4,7 +4,7 @@ Turns the City of Guelph [Park Boundary](https://gismaps.guelph.ca/hosting/rest/
 layer (126 park polygons) into map-tile layers that OpenStreetMap mappers can
 add to the **JOSM** and **iD** editors as a reference overlay.
 
-**Live layer and how to add it: https://guelph-mapping.github.io/guelph-parks-layer/**
+**Live layer and how to add it: https://guelph-maps.github.io/guelph-parks-layer/**
 
 It is a sibling of
 [toronto-parks-layer](https://github.com/skfd/toronto-parks-layer), which is the
@@ -14,8 +14,7 @@ A person who knows one project knows the other; the only step that differs in
 substance is `download`, because Guelph publishes an ArcGIS FeatureServer where
 Toronto publishes a static file on CKAN.
 
-The audit behind it is
-[`guelph-osm-import-audit/findings/parks-recreation.md`](../guelph-osm-import-audit/findings/parks-recreation.md),
+The audit behind it is `guelph-osm-import-audit/findings/parks-recreation.md`,
 which tiered this layer **4 / conflate**: OSM already has the parks, what the
 City has that OSM lacks is the **official current names** — including the
 Anishinaabemowin renaming *Mkinaak Donjibaa Park* — plus a handful of genuinely
@@ -33,7 +32,7 @@ absent polygons. That is a gap page, not an import.
   in; at the top raster zoom every named park is labelled.
 - A **landing page** with copy-paste "add this layer" instructions for both
   editors.
-- A **gap-review page** ([`/gaps/`](https://guelph-mapping.github.io/guelph-parks-layer/gaps/))
+- A **gap-review page** ([`/gaps/`](https://guelph-maps.github.io/guelph-parks-layer/gaps/))
   that compares the City polygons against park areas already in OpenStreetMap
   and lists the gaps &mdash; City parks with no overlapping OSM area
   ("missing"), matched parks whose OSM name differs ("mismatch"), and matched
@@ -151,8 +150,8 @@ paginating around.
 ## Tile endpoints
 
 ```
-https://guelph-mapping.github.io/guelph-parks-layer/tiles/vector/{z}/{x}/{y}.pbf   (z10-19)
-https://guelph-mapping.github.io/guelph-parks-layer/tiles/raster/{z}/{x}/{y}.png   (z13-17)
+https://guelph-maps.github.io/guelph-parks-layer/tiles/vector/{z}/{x}/{y}.pbf   (z10-19)
+https://guelph-maps.github.io/guelph-parks-layer/tiles/raster/{z}/{x}/{y}.png   (z13-17)
 ```
 
 The vector layer name is `parks`.

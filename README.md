@@ -6,6 +6,12 @@ add to the **JOSM** and **iD** editors as a reference overlay.
 
 **Live layer and how to add it: https://guelph-maps.github.io/guelph-parks-layer/**
 
+Part of the [guelph-maps](https://github.com/guelph-maps) organisation, which
+indexes every Guelph project. Its sibling layer is
+[guelph-address-layer](https://github.com/guelph-maps/guelph-address-layer)
+([live](https://guelph-maps.github.io/guelph-address-layer/)): the City's
+address points, rendered as house-number labels, from the same organisation.
+
 It is a sibling of
 [toronto-parks-layer](https://github.com/skfd/toronto-parks-layer), which is the
 template this was cloned from: the same `download -> slim -> compare -> vector
@@ -14,11 +20,16 @@ A person who knows one project knows the other; the only step that differs in
 substance is `download`, because Guelph publishes an ArcGIS FeatureServer where
 Toronto publishes a static file on CKAN.
 
-The audit behind it is `guelph-osm-import-audit/findings/parks-recreation.md`,
+The audit behind it is
+[`guelph-osm-import-audit`](https://github.com/guelph-maps/guelph-osm-import-audit)
+(private), `findings/parks-recreation.md`,
 which tiered this layer **4 / conflate**: OSM already has the parks, what the
 City has that OSM lacks is the **official current names** — including the
 Anishinaabemowin renaming *Mkinaak Donjibaa Park* — plus a handful of genuinely
 absent polygons. That is a gap page, not an import.
+[guelph-pitches-beholder](https://github.com/guelph-maps/guelph-pitches-beholder)
+tracks the courts and sports fields inside these same parks against OSM —
+the same audit finding, tiered 4 / conflate.
 
 ## What it produces
 

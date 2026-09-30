@@ -249,6 +249,10 @@ as missing from OSM.
 `overpass.kumi.systems` is deliberately **not** in the list. It returned 504s
 through August 2026 and has since been caught serving months-stale data, which
 is the worse of the two failures because it looks exactly like success.
+`overpass.private.coffee` was dropped on 2026-09-29 for the same failure: the
+Toronto sibling caught it serving OSM from May and July on consecutive days.
+That leaves `overpass-api.de` alone, and a reply from any mirror whose data is
+more than `OSM_MAX_AGE_DAYS` (3) old is refused like a 504.
 
 The page prints the **OSM database timestamp the mirror declares about its own
 reply** (`osm3s.timestamp_osm_base`), not the date of the build — a mirror can

@@ -21,7 +21,7 @@ import json
 import os
 import re
 import time
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
 import requests
@@ -161,6 +161,14 @@ def _try_overpass(url, query):
         print(f"  {host}: {count:,} elements, under the "
               f"{config.OSM_MIN_ELEMENTS:,} floor -- ignoring this reply")
         return None
+    base = _osm_base_time(data)
+    if base and datetime.now(timezone.utc) - base > timedelta(days=config.OSM_MAX_AGE_DAYS):
+        # Nor is a full reply proof of a current one. A lagging mirror answers
+        # the query in full from data months old, and the page would present
+        # that as this week's OSM.
+        print(f"  {host}: OSM data from {_osm_base(data)}, older than "
+              f"{config.OSM_MAX_AGE_DAYS} days -- ignoring this reply")
+        return None
     print(f"  {host}: {count:,} elements in {time.time() - started:.0f}s, "
           f"OSM base {_osm_base(data)}")
     return data
@@ -190,6 +198,15 @@ def _osm_base(data):
     if len(stamp) >= 16:
         return f"{stamp[:10]} {stamp[11:16]}Z"
     return date.today().isoformat()
+
+
+def _osm_base_time(data):
+    """The same timestamp as an aware datetime, or None if absent or garbled."""
+    stamp = ((data.get("osm3s") or {}).get("timestamp_osm_base") or "").strip()
+    try:
+        return datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def _cache_date():

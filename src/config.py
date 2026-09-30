@@ -125,9 +125,14 @@ PLACEHOLDER_NAMES = frozenset({"unnamed neighbourhood park"})
 #
 # Measured 2026-09-13 with this exact query, from this laptop:
 #   overpass-api.de   2.1s   200   277 elements
+#
+# overpass.private.coffee was dropped on 2026-09-29 for the same reason. The
+# Toronto sibling caught it answering from a pool of backends months behind:
+# replies on consecutive days carried OSM from 2026-05-06, 07-15 and 07-28,
+# while overpass-api.de was two minutes behind. OSM_MAX_AGE_DAYS refuses such a
+# reply from any mirror; one that is usually stale is worse than none.
 OVERPASS_URLS = (
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.private.coffee/api/interpreter",
 )
 OVERPASS_TIMEOUT = 300
 OVERPASS_ROUNDS = 3
@@ -138,6 +143,10 @@ OVERPASS_ROUND_WAIT = 60
 # valid EMPTY result, and taking that at face value reports all 126 City parks
 # as missing from OSM.
 OSM_MIN_ELEMENTS = 120
+# Oldest OSM data a reply may carry (its osm3s.timestamp_osm_base) and still be
+# compared against. A healthy instance is minutes behind; a week-old reply is
+# no fresher than the cache it would replace, so it counts as no answer.
+OSM_MAX_AGE_DAYS = 3
 # Overpass rejects the default requests User-Agent (HTTP 406); identify the tool.
 USER_AGENT = "guelph-parks-layer/0.1 (toronto@comentality.com)"
 # Guelph bounding box (S, W, N, E), verbatim from guelph-beholder's config.toml

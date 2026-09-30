@@ -13,13 +13,16 @@ import sys
 
 import pytest
 import requests
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from addressvault import net  # noqa: E402
 from src import compare, config, site  # noqa: E402
 
-OSM_BASE = "2026-09-13T21:56:45Z"
+# Minutes old, as a healthy instance's reply is; a fixed date would age past
+# OSM_MAX_AGE_DAYS and be refused.
+OSM_BASE = (datetime.now(timezone.utc) - timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
 GOOD = {"osm3s": {"timestamp_osm_base": OSM_BASE},
         "elements": [{"type": "way", "id": i, "tags": {}, "geometry": []}
                      for i in range(config.OSM_MIN_ELEMENTS + 1)]}
@@ -110,6 +113,22 @@ def test_an_implausibly_small_reply_is_not_accepted(paths, monkeypatch):
     assert len(data["elements"]) == len(GOOD["elements"])
 
 
+def test_a_reply_from_months_old_data_is_not_accepted(paths, monkeypatch):
+    # overpass.private.coffee answered the Toronto sibling on 2026-09-29 in
+    # full, with OSM as of 2026-05-06; its page showed May as this week.
+    monkeypatch.setattr(config, "OVERPASS_URLS",
+                        ("https://lagging.example/api", "https://good.example/api"))
+    stale = {**GOOD, "osm3s": {"timestamp_osm_base": "2026-05-06T03:25:00Z"}}
+    post = _post({"lagging.example": FakeResponse(stale),
+                  "good.example": FakeResponse(GOOD)})
+    monkeypatch.setattr(compare.requests, "post", post)
+
+    _data, osm_date, from_cache = compare._load_osm()
+    assert from_cache is False
+    assert osm_date.startswith(OSM_BASE[:10])
+    assert [u.split("/")[2] for u in post.calls] == ["lagging.example", "good.example"]
+
+
 def test_a_good_fetch_records_when_and_where_it_came_from(paths, monkeypatch):
     monkeypatch.setattr(config, "OVERPASS_URLS", ("https://good.example/api",))
     monkeypatch.setattr(compare.requests, "post",
@@ -121,7 +140,7 @@ def test_a_good_fetch_records_when_and_where_it_came_from(paths, monkeypatch):
     # The date the page prints is the OSM database timestamp the mirror states
     # about its own reply, NOT the day the fetch happened: a mirror can answer
     # in two seconds with data from last week, and "today" would hide that.
-    assert osm_date == "2026-09-13 21:56Z"
+    assert osm_date == f"{OSM_BASE[:10]} {OSM_BASE[11:16]}Z"
     assert sidecar["mirror"] == "good.example"
     assert sidecar["timestamp_osm_base"] == OSM_BASE
     assert sidecar["osm_base"] == osm_date

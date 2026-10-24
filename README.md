@@ -49,7 +49,9 @@ the same audit finding, tiered 4 / conflate.
   ("missing"), matched parks whose OSM name differs ("mismatch"), and matched
   parks whose OSM area carries no name at all ("unnamed") &mdash; on an
   interactive map and a filterable table. OSM areas are pulled from Overpass;
-  matching is by spatial overlap (see [`src/compare.py`](src/compare.py)). Its
+  matching is by spatial overlap (see [`src/compare.py`](src/compare.py)).
+  The same page lists the **park amenities** the City records and OSM lacks
+  &mdash; see [Park amenities](#park-amenities). Its
   [history page](https://guelph-maps.github.io/guelph-parks-layer/gaps/history.html)
   charts those counts over time, one point per weekly run.
 
@@ -100,6 +102,75 @@ OSM's existing polygons were traced from imagery and follow the visible edge.
 Where the two disagree, OSM's is often the better `leisure=park`. Use this
 layer for names and for finding absent parks; do not replace geometry from it
 without overlaying a sample first.
+
+## Park amenities
+
+The City publishes the same 126 parks a second time, as
+[Park Location](https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1/FeatureServer/19)
+(OpenData1/19, same licence): one centroid point per park, names identical to
+Park Boundary's 126 of 126, plus `NumParking` and seventeen YES/NO amenity flags.
+Its geometry adds nothing, so it is not a layer of its own; its flags are read
+for four extra statuses on the gap page, each row joined to its park polygon by
+name and OSM looked for inside the polygon plus 20 m
+([`src/amenities.py`](src/amenities.py)):
+
+| status | the City says | gap when | first run, 2026-10-24 | on by default |
+|---|---|---|--:|---|
+| `notoilet` | a **permanent** restroom in the [Restrooms](https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1/FeatureServer/20) layer (OpenData1/20) | no `amenity=toilets` within 100 m of it or anywhere in its park, one OSM toilet per City restroom | 3 | yes |
+| `nosplashpad` | `SplashPad=YES` | no splash pad in the park, under any tag Guelph uses for one | 2 | yes |
+| `nodiscgolf` | `DiscGolf=YES` | no `leisure=disc_golf_course` or `sport=disc_golf` | 2 | yes |
+| `nocapacity` | `NumParking` > 0 | no lot of the park's carries `capacity` | 23 | no |
+
+The three restrooms are Riverside's bandshell, the third of Exhibition Park's
+three (OSM has two toilets there), and restroom 54, which the City files under
+Eramosa River Park but which stands inside Lyon Park's polygon. Splash pads:
+Northview Estates Subdivision and Margaret Greene. Disc golf: Eastview and
+Riverside.
+
+Choices worth knowing before changing them:
+
+- **Restrooms come from the Restrooms layer, not Park Location's `Restroom`
+  flag.** The two contradict each other: the flag says YES for 17 parks with no
+  restroom of either kind in that layer and NO for 3 that have one (counted
+  live, and stated on the page). Portables are left out; they are seasonal. The
+  City's restroom points sit 60&ndash;80 m off the building OSM maps at Margaret
+  Greene, Silvercreek and Hanlon Creek, hence the 100 m radius
+  (`TOILET_RADIUS_M`) and the same-park allowance.
+- **Lots inside the polygon first.** The 20 m fringe finds the lot at every
+  park the City gives parking, but it also reaches the neighbours': Riverside,
+  with nine bare lots of its own, would be credited by a private 5-stall lot
+  14 m outside it. So a park's lots are those whose
+  centre is inside its polygon, and the fringe counts only when there are none.
+  `access` is not filtered on: Orin Reid's, South End's and Westminster Woods'
+  lots are tagged `private` and are the park's. Goldie Mill and Silvercreek
+  already carry `capacity` (35 and 7 + 10 against the City's 39 and 18), so
+  they are done, not mismatches; the recalibration's 25 counted a park done only
+  when a lot's `capacity` equalled the City number. Lot capacity is **off by default**: the
+  City's figure is for the whole park, to be counted from aerial imagery across
+  its lots, not copied onto the one the row links to.
+- **Splash pads are never `leisure=splash_pad` in Guelph.** Four are
+  `playground=splash_pad`, Market Square's is `fountain=splash_pad` (the City
+  flags Market Square `SplashPad=NO`; the check only runs City-to-OSM, so that
+  disagreement is noted here, not listed), and Hanlon Creek's is a
+  `leisure=swimming_pool` named "Hanlon Park Creek Splash Pad"
+  ([way 208504883](https://www.openstreetmap.org/way/208504883)), which wants
+  retagging by hand. The check accepts all of those, and a name with "splash"
+  or "spray" in it.
+- **Left out:** the picnic flag (that gap is OSM not mapping picnic tables),
+  playgrounds (93 of 94 already in OSM), the pitch flags
+  ([guelph-pitches-beholder](https://github.com/guelph-maps/guelph-pitches-beholder)
+  covers them) and community gardens
+  ([guelph-gardens-layer](https://guelph-maps.github.io/guelph-gardens-layer/gaps/)
+  covers them from the City's garden roster; the page links there).
+
+Both City layers are fetched by `download` every run (about 120 KB together)
+and simply overwritten. The OSM side is a second Overpass query with its own
+cache (`data/osm-amenities.json`) and element floor, so a fallback can never
+hand parking lots to the park match; falling back to it marks the run stale
+like the park query does. If either City layer has never been fetched, or no
+mirror answers and there is no cache, the amenity statuses are skipped &mdash;
+their counts show as dashes and are left out of the history row, never
+recorded as zero.
 
 ## Setup
 
@@ -234,6 +305,11 @@ City adds or renames parks, not only when someone maps one.
 A checkout without `data/history.jsonl` (a fresh clone, a wiped `data/`) seeds
 itself from the published `gaps/history.jsonl` before recording, so the record
 survives the machine it was made on.
+
+The amenity counts (`nocapacity`, `nosplashpad`, `nodiscgolf`, `notoilet`) are
+recorded from 2026-10-24 on. Earlier rows do not have them, and `backfill` does
+not reconstruct them; the chart starts those lines at the first run that took
+them, and the legend toggles each line (lot capacity starts hidden).
 
 ### Keeping the OSM half fresh
 

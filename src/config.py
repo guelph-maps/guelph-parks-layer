@@ -171,6 +171,54 @@ OSM_FETCH_PATH = os.path.join(DATA_DIR, ".osm-fetch.json")
 GAPS_GEOJSON_PATH = os.path.join(DATA_DIR, "gaps.geojson")
 GAPS_COUNT_PATH = os.path.join(DATA_DIR, "gaps.count.json")
 
+# --- Park amenities (extra statuses on the gap page) ---
+# Park Location (OpenData1 layer 19) is the same 126 parks as Park Boundary, as
+# centroid points with identical names, plus NumParking and YES/NO amenity
+# flags. Its geometry adds nothing; the flags are what is read. Restrooms
+# (layer 20) is where toilets come from instead of Park Location's Restroom
+# flag, which contradicts it (see amenities.py). Both are small (~90 KB and
+# ~30 KB) and fetched every run; a failed fetch keeps the previous copy, and
+# with no copy at all the amenity statuses are skipped, not the build.
+PARK_LOCATION_URL = (
+    "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1"
+    "/FeatureServer/19"
+)
+RESTROOMS_URL = (
+    "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1"
+    "/FeatureServer/20"
+)
+PARK_LOCATION_PATH = os.path.join(DATA_DIR, "park-location.geojson")
+RESTROOMS_PATH = os.path.join(DATA_DIR, "restrooms.geojson")
+# How far outside a park polygon an OSM feature still counts as in the park.
+# Measured 2026-10-09: polygon + 20 m finds the lot at all 25 parks the City
+# gives parking. It can also reach a neighbour's lot -- Riverside picks up a
+# private 5-stall lot 14 m out -- so parking prefers lots inside the polygon
+# and only falls back to the 20 m fringe when there are none.
+AMENITY_FRINGE_M = 20
+# A permanent restroom counts as mapped when an OSM amenity=toilets lies within
+# this distance of the City's point, or anywhere in the same park (one OSM
+# toilet per City restroom either way). The City points sit 60-80 m off the
+# building OSM maps at Margaret Greene, Silvercreek and Hanlon Creek; 100 m
+# takes those and still leaves the Riverside bandshell (326 m) a gap.
+TOILET_RADIUS_M = 100
+# The amenity half of the OSM side: a second Overpass query, with its own cache,
+# so a fallback to a cached reply can never hand parking lots to the park match.
+# Splash pads are mapped every way but leisure=splash_pad in Guelph (four as
+# playground=splash_pad, one as a swimming_pool named "... Splash Pad"), so the
+# name is asked for too.
+OSM_AMENITY_SELECTORS = (
+    'nwr["amenity"~"^(parking|toilets)$"]',
+    'nwr["leisure"~"^(splash_pad|water_park|disc_golf_course)$"]',
+    'nwr["playground"="splash_pad"]',
+    'nwr["fountain"="splash_pad"]',
+    'nwr["sport"~"disc_golf"]',
+    'nwr["name"~"splash|spray",i]',
+)
+OSM_AMENITY_CACHE_PATH = os.path.join(DATA_DIR, "osm-amenities.json")
+OSM_AMENITY_FETCH_PATH = os.path.join(DATA_DIR, ".osm-amenities-fetch.json")
+# ~1,950 elements on 2026-10-24, nearly all parking lots.
+OSM_AMENITY_MIN_ELEMENTS = 500
+
 # --- Gap history (trend page) ---
 # One JSON line per live compare run: the gap counts and what they were
 # computed against. It lives in data/ like the rest of the observer's state.

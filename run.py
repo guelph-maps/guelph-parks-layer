@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from addressvault import LinkUnavailable
 
 from src import config
-from src.download import download
+from src.download import download, download_amenity_layers
 from src.slim import slim
 from src.compare import compare
 from src.history import backfill
@@ -42,6 +42,7 @@ def cmd_download(args):
     _banner("Download")
     status, path = download(force=args.force)
     print(f"{status}: {path}")
+    download_amenity_layers()
 
 
 def cmd_slim(args):
@@ -134,7 +135,7 @@ def _latest_geojson():
 
 
 COMMANDS = {
-    "download": (cmd_download, "Download the latest Park Boundary GeoJSON"),
+    "download": (cmd_download, "Download Park Boundary (+ Park Location, Restrooms)"),
     "slim": (cmd_slim, "Filter parks into slim GeoJSONL"),
     "compare": (cmd_compare, "Compare City polygons against OSM -> gaps.geojson"),
     "backfill": (cmd_backfill, "Reconstruct past gap counts from OSM history"),

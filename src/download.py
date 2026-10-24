@@ -80,6 +80,31 @@ def download(force=False):
     return "DOWNLOADED", filepath
 
 
+def download_amenity_layers():
+    """Fetch Park Location and Restrooms, the two layers the amenity checks read.
+
+    Each is small and simply overwritten, with none of the dated-file machinery
+    above: nothing downstream dates by them. Best-effort per layer -- a failure
+    keeps the previous copy and costs at most the amenity statuses, never the
+    tiles. A dead link still raises, as everywhere else.
+    """
+    for name, url, path in (
+        ("Park Location", config.PARK_LOCATION_URL, config.PARK_LOCATION_PATH),
+        ("Restrooms", config.RESTROOMS_URL, config.RESTROOMS_PATH),
+    ):
+        print(f"Querying the {name} FeatureServer ...")
+        try:
+            body = _fetch(f"{url}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson")
+            _check_payload(body)
+        except (requests.RequestException, RuntimeError) as e:
+            kept = ("keeping the previous copy" if os.path.isfile(path)
+                    else "the amenity statuses will be skipped")
+            print(f"Warning: {name} not fetched ({e}); {kept}.")
+            continue
+        with open(path, "wb") as f:
+            f.write(body)
+
+
 def _fetch(url):
     """GET ``url``, retrying a dropped connection. Returns the raw body."""
     for attempt in range(RETRIES + 1):

@@ -37,6 +37,10 @@ body.app { margin: 0; display: flex; flex-direction: column; }
 .count.mismatch { border-left: 4px solid #1c7ed6; }
 .count.unnamed { border-left: 4px solid #e8590c; }
 .count.placeholder { border-left: 4px solid #868e96; }
+.count.notoilet { border-left: 4px solid #c2255c; }
+.count.nosplashpad { border-left: 4px solid #1098ad; }
+.count.nodiscgolf { border-left: 4px solid #5c940d; }
+.count.nocapacity { border-left: 4px solid #862e9c; }
 .count.meta-count {
   display: flex;
   align-items: center;
@@ -67,6 +71,14 @@ body.app { margin: 0; display: flex; flex-direction: column; }
   color: var(--ink);
   font-size: .85rem;
   line-height: 1.4;
+}
+
+/* Where the amenity counts come from; quieter than .stale, it is not a warning. */
+.amenity-note {
+  margin: .5rem 0 0;
+  font-size: .82rem;
+  line-height: 1.4;
+  color: var(--muted);
 }
 
 /* --- two-panel body --- */
@@ -105,6 +117,10 @@ body.app { margin: 0; display: flex; flex-direction: column; }
 .swatch.mismatch { background: #1c7ed6; }
 .swatch.unnamed { background: #e8590c; }
 .swatch.placeholder { background: #868e96; }
+.swatch.notoilet { background: #c2255c; }
+.swatch.nosplashpad { background: #1098ad; }
+.swatch.nodiscgolf { background: #5c940d; }
+.swatch.nocapacity { background: #862e9c; }
 
 /* --- data table --- */
 #gap-table { font-size: .9rem; }
@@ -124,6 +140,11 @@ body.app { margin: 0; display: flex; flex-direction: column; }
 #gap-table .status-mismatch { color: #1864ab; font-weight: 600; }
 #gap-table .status-unnamed { color: #c2410c; font-weight: 600; }
 #gap-table .status-placeholder { color: #666; font-weight: 600; }
+#gap-table .status-notoilet { color: #a61e4d; font-weight: 600; }
+#gap-table .status-nosplashpad { color: #0b7285; font-weight: 600; }
+#gap-table .status-nodiscgolf { color: #4c7a0b; font-weight: 600; }
+#gap-table .status-nocapacity { color: #862e9c; font-weight: 600; }
+#gap-table .detail { display: block; color: var(--muted); font-size: .85em; }
 #gap-table .osm-blank { color: var(--muted); }
 #gap-table .osm-name { display: block; color: var(--muted); font-size: .85em; }
 #gap-table .osm-links { white-space: nowrap; }

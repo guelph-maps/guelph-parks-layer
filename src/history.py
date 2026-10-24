@@ -25,7 +25,8 @@ from addressvault import net
 
 from src import config
 
-FIELDS = ("missing", "mismatch", "unnamed", "placeholder", "city", "osm_rings")
+FIELDS = ("missing", "mismatch", "unnamed", "placeholder", "city", "osm_rings",
+          "nocapacity", "nosplashpad", "nodiscgolf", "notoilet")
 
 
 def record(summary, day=None):
@@ -34,8 +35,10 @@ def record(summary, day=None):
         print("History: not recorded (compared against cached OSM).")
         return None
     day = day or date.today().isoformat()
+    # A count the run did not take is left out, not written as 0: the amenity
+    # counts start on 2026-10-24, and are absent from any run that skipped them.
     row = {"date": day, "osm_date": summary.get("osm_date") or day,
-           "source": "live", **{k: summary.get(k, 0) for k in FIELDS}}
+           "source": "live", **{k: summary[k] for k in FIELDS if k in summary}}
     seed()
     rows = [r for r in load() if r["date"] != day] + [row]
     _write(rows)

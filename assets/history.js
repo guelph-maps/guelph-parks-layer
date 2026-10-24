@@ -1,6 +1,9 @@
-// Gap history page: a three-series line chart of the recorded compare runs,
-// drawn as inline SVG from the rows embedded in the page. Same colours as the
-// gap map's markers, so "missing" is the same purple here and there.
+// Gap history page: a line chart of the recorded compare runs, drawn as inline
+// SVG from the rows embedded in the page. Same colours as the gap map's
+// markers, so "missing" is the same purple here and there. The legend toggles
+// series; lot capacity starts hidden, as it does on the gap page. A run that did
+// not take a count (the amenity counts start 2026-10-24) leaves a gap in that
+// line rather than a drop to zero.
 
 (function () {
   "use strict";
@@ -9,6 +12,10 @@
     { key: "missing", label: "Missing in OSM", short: "missing", color: "#7048e8" },
     { key: "mismatch", label: "Name mismatch", short: "name mismatch", color: "#1c7ed6" },
     { key: "unnamed", label: "OSM area unnamed", short: "unnamed", color: "#e8590c" },
+    { key: "notoilet", label: "Restroom not in OSM", short: "restrooms", color: "#c2255c" },
+    { key: "nosplashpad", label: "Splash pad not in OSM", short: "splash pads", color: "#1098ad" },
+    { key: "nodiscgolf", label: "Disc golf not in OSM", short: "disc golf", color: "#5c940d" },
+    { key: "nocapacity", label: "Lot without capacity", short: "lot capacity", color: "#862e9c", off: true },
   ];
   var W = 860, H = 320;
   var M = { top: 16, right: 150, bottom: 36, left: 48 };
@@ -21,7 +28,13 @@
     var raw = document.getElementById("history-data");
     var rows = [];
     try { rows = JSON.parse(raw.textContent) || []; } catch (e) { rows = []; }
-    legend(document.getElementById("legend"));
+    function redraw() {
+      var old = holder.querySelector("svg");
+      if (old) { holder.removeChild(old); }
+      document.getElementById("tip").style.display = "none";
+      if (rows.length) { draw(holder, rows); }
+    }
+    legend(document.getElementById("legend"), redraw);
     if (!rows.length) {
       var p = document.createElement("p");
       p.className = "empty";
@@ -33,14 +46,23 @@
     draw(holder, rows);
   }
 
-  function legend(el) {
+  function legend(el, redraw) {
     SERIES.forEach(function (s) {
-      var span = document.createElement("span");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "toggle";
+      btn.setAttribute("aria-pressed", String(!s.off));
+      btn.title = "Show or hide this line";
       var i = document.createElement("i");
       i.style.borderColor = s.color;
-      span.appendChild(i);
-      span.appendChild(document.createTextNode(s.label));
-      el.appendChild(span);
+      btn.appendChild(i);
+      btn.appendChild(document.createTextNode(s.label));
+      btn.addEventListener("click", function () {
+        s.off = !s.off;
+        btn.setAttribute("aria-pressed", String(!s.off));
+        redraw();
+      });
+      el.appendChild(btn);
     });
     var a = document.createElement("span");
     a.className = "attic";
@@ -49,13 +71,16 @@
     el.appendChild(a);
   }
 
+  function has(r, s) { return typeof r[s.key] === "number"; }
+
   function draw(holder, rows) {
+    var shown = SERIES.filter(function (s) { return !s.off; });
     var xs = rows.map(function (r) { return Date.parse(r.date + "T00:00:00Z"); });
     var x0 = xs[0], x1 = xs[xs.length - 1];
     if (x1 === x0) { x0 -= 7 * 864e5; x1 += 7 * 864e5; }
     var maxY = 0;
     rows.forEach(function (r) {
-      SERIES.forEach(function (s) { maxY = Math.max(maxY, r[s.key] || 0); });
+      shown.forEach(function (s) { maxY = Math.max(maxY, has(r, s) ? r[s.key] : 0); });
     });
     var step = niceStep(maxY || 1);
     var yTop = Math.max(step, Math.ceil(maxY / step) * step);
@@ -91,24 +116,34 @@
     });
 
     // Lines, then points (a 2px surface ring keeps them legible where they cross).
-    SERIES.forEach(function (s) {
-      var d = rows.map(function (r, i) {
-        return (i ? "L" : "M") + sx(xs[i]).toFixed(1) + " " + sy(r[s.key] || 0).toFixed(1);
-      }).join(" ");
-      svg.appendChild(el("path", { "class": "series", d: d, stroke: s.color }));
-    });
-    SERIES.forEach(function (s) {
+    shown.forEach(function (s) {
+      var d = "", pen = "M";
       rows.forEach(function (r, i) {
+        if (!has(r, s)) { pen = "M"; return; }
+        d += pen + sx(xs[i]).toFixed(1) + " " + sy(r[s.key]).toFixed(1) + " ";
+        pen = "L";
+      });
+      if (d) { svg.appendChild(el("path", { "class": "series", d: d, stroke: s.color })); }
+    });
+    shown.forEach(function (s) {
+      rows.forEach(function (r, i) {
+        if (!has(r, s)) { return; }
         svg.appendChild(el("circle", { "class": "pt", r: 4, fill: s.color,
-          cx: sx(xs[i]), cy: sy(r[s.key] || 0) }));
+          cx: sx(xs[i]), cy: sy(r[s.key]) }));
       });
     });
 
     // Direct end labels: the latest value of each series, nudged apart.
-    var last = rows[rows.length - 1];
-    var ends = SERIES.map(function (s) {
-      return { s: s, y: sy(last[s.key] || 0), v: last[s.key] || 0 };
-    }).sort(function (a, b) { return a.y - b.y; });
+    var ends = [];
+    shown.forEach(function (s) {
+      for (var k = rows.length - 1; k >= 0; k--) {
+        if (has(rows[k], s)) {
+          ends.push({ s: s, y: sy(rows[k][s.key]), v: rows[k][s.key] });
+          return;
+        }
+      }
+    });
+    ends.sort(function (a, b) { return a.y - b.y; });
     for (var i = 1; i < ends.length; i++) {
       if (ends[i].y - ends[i - 1].y < 16) { ends[i].y = ends[i - 1].y + 16; }
     }
@@ -150,12 +185,13 @@
       head.textContent = r.date + (r.source === "attic" ? " (reconstructed)" : "") +
         (r.osm_date && r.osm_date !== r.date ? " · OSM " + r.osm_date : "");
       tip.appendChild(head);
-      SERIES.forEach(function (s) {
+      shown.forEach(function (s) {
+        if (!has(r, s)) { return; }
         var line = document.createElement("div");
         var key = document.createElement("i");
         key.style.borderColor = s.color;
         var val = document.createElement("strong");
-        val.textContent = fmt(r[s.key] || 0);
+        val.textContent = fmt(r[s.key]);
         line.appendChild(key);
         line.appendChild(val);
         line.appendChild(document.createTextNode(" " + s.short));

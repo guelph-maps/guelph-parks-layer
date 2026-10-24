@@ -100,6 +100,13 @@ def _build_gaps_page(build_date):
         "{{OSM_COUNT}}": f"{summary.get('osm_rings', 0):,}",
         "{{OSM_DATE}}": summary.get("osm_date", build_date),
         "{{OSM_NOTE}}": _osm_note(summary),
+        "{{NOCAPACITY_COUNT}}": _count(summary, "nocapacity"),
+        "{{NOSPLASHPAD_COUNT}}": _count(summary, "nosplashpad"),
+        "{{NODISCGOLF_COUNT}}": _count(summary, "nodiscgolf"),
+        "{{NOTOILET_COUNT}}": _count(summary, "notoilet"),
+        "{{AMENITY_NOTE}}": _amenity_note(summary),
+        "{{PARK_LOCATION_URL}}": config.PARK_LOCATION_URL,
+        "{{RESTROOMS_URL}}": config.RESTROOMS_URL,
         "{{GITHUB_REPO}}": config.GITHUB_REPO,
         # The gap page is published separately from the landing page and is
         # often the only page a mapper opens, so it carries the City licence
@@ -160,8 +167,38 @@ def _build_history_page(gaps_dir, build_date):
 
 def _history_row(r):
     source = "reconstructed" if r.get("source") == "attic" else "live"
-    cells = [r["date"]] + [f"{r.get(k, 0):,}" for k in history.FIELDS] + [source]
+    cells = [r["date"]] + [_count(r, k) for k in history.FIELDS] + [source]
     return "<tr>" + "".join(f"<td>{c}</td>" for c in cells) + "</tr>"
+
+
+def _count(summary, key):
+    """A count for the page; a dash where the run did not take it."""
+    return f"{summary[key]:,}" if key in summary else "&ndash;"
+
+
+def _amenity_note(summary):
+    """Where the amenity counts come from, and the City disagreeing with itself.
+
+    The Restroom flag on Park Location and the Restrooms layer contradict each
+    other; the page goes by the Restrooms layer and says how far apart they are,
+    so nobody "fixes" OSM toward the flag.
+    """
+    if "notoilet" not in summary:
+        return ('<p class="amenity-note">The park amenity checks were skipped this '
+                'build (the City layers or the amenity Overpass query were '
+                'unavailable), so their counts show as dashes.</p>')
+    return (
+        '<p class="amenity-note">Amenities come from the City&rsquo;s Park Location '
+        'flags, looked for in OSM inside each park polygon (+20&nbsp;m). '
+        'Restrooms go by the City&rsquo;s Restrooms layer, permanent ones only, '
+        'because Park Location&rsquo;s own Restroom flag contradicts it: it says '
+        f'YES for <strong>{summary.get("restroom_flag_unbacked", 0)}</strong> '
+        'parks with no restroom in that layer and NO for '
+        f'<strong>{summary.get("restroom_flag_unlisted", 0)}</strong> that have '
+        'one. Community gardens are on the '
+        '<a href="https://guelph-maps.github.io/guelph-gardens-layer/gaps/">'
+        'gardens layer</a>.</p>'
+    )
 
 
 def _osm_note(summary):

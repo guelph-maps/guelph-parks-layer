@@ -29,14 +29,21 @@
     <div class="count mismatch"><strong>{{MISMATCH_COUNT}}</strong><span>name mismatches</span></div>
     <div class="count unnamed"><strong>{{UNNAMED_COUNT}}</strong><span>OSM area unnamed</span></div>
     <div class="count placeholder"><strong>{{PLACEHOLDER_COUNT}}</strong><span>City name is a placeholder</span></div>
+    <div class="count notoilet"><strong>{{NOTOILET_COUNT}}</strong><span>restrooms not in OSM</span></div>
+    <div class="count nosplashpad"><strong>{{NOSPLASHPAD_COUNT}}</strong><span>splash pads</span></div>
+    <div class="count nodiscgolf"><strong>{{NODISCGOLF_COUNT}}</strong><span>disc golf</span></div>
+    <div class="count nocapacity"><strong>{{NOCAPACITY_COUNT}}</strong><span>lots without capacity</span></div>
     <div class="count"><strong>{{CITY_COUNT}}</strong><span>City polygons</span></div>
     <div class="count"><strong>{{OSM_COUNT}}</strong><span>OSM park areas</span></div>
     <div class="count meta-count">City data {{DATA_DATE}} &middot; OSM data {{OSM_DATE}} &middot; compared {{BUILD_DATE}}</div>
   </div>
   {{OSM_NOTE}}
+  {{AMENITY_NOTE}}
   <p class="licence">
     <a href="{{LICENSE_URL}}">{{LICENSE_NOTICE}}</a>
-    Source: <a href="{{DATASET_PAGE}}">Park Boundary</a>.
+    Sources: <a href="{{DATASET_PAGE}}">Park Boundary</a>,
+    <a href="{{PARK_LOCATION_URL}}">Park Location</a>,
+    <a href="{{RESTROOMS_URL}}">Restrooms</a>.
   </p>
 </header>
 
@@ -56,6 +63,14 @@
           <input type="checkbox" id="show-unnamed" checked> Unnamed OSM</label>
         <label><span class="swatch placeholder"></span>
           <input type="checkbox" id="show-placeholder"> Placeholder name</label>
+        <label><span class="swatch notoilet"></span>
+          <input type="checkbox" id="show-notoilet" checked> Restroom</label>
+        <label><span class="swatch nosplashpad"></span>
+          <input type="checkbox" id="show-nosplashpad" checked> Splash pad</label>
+        <label><span class="swatch nodiscgolf"></span>
+          <input type="checkbox" id="show-nodiscgolf" checked> Disc golf</label>
+        <label><span class="swatch nocapacity"></span>
+          <input type="checkbox" id="show-nocapacity"> Lot capacity</label>
         <input type="search" id="filter" placeholder="Filter by name...">
       </div>
       <p class="hint">
@@ -64,7 +79,9 @@
         open it on openstreetmap.org or <kbd>I</kbd> in the iD editor (each row
         has the same <strong>OSM&nbsp;&middot;&nbsp;iD</strong> link pair).
         Matching is by spatial overlap &mdash; verify against imagery before
-        editing OSM.
+        editing OSM. <em>Lot capacity</em> is off by default: the City&rsquo;s
+        stall count is for the whole park, to be counted from aerial imagery
+        across its lots, not copied onto the one the row links to.
       </p>
     </div>
     <div class="table-scroll">

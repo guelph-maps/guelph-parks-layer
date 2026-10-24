@@ -5,7 +5,8 @@
 
   var COLORS = {
     missing: "#7048e8", mismatch: "#1c7ed6", unnamed: "#e8590c",
-    placeholder: "#868e96",
+    placeholder: "#868e96", notoilet: "#c2255c", nosplashpad: "#1098ad",
+    nodiscgolf: "#5c940d", nocapacity: "#862e9c",
   };
   var map;
   var features = [];
@@ -46,7 +47,10 @@
 
     features.forEach(function (f, i) {
       f.properties._i = i;
-      var center = centroid(f.geometry);
+      // An amenity gap carries its own marker point (the lot, the restroom),
+      // so several gaps in one park do not stack on its centroid.
+      var pt = f.properties.point;
+      var center = pt ? [pt[1], pt[0]] : centroid(f.geometry);
       f._center = center;
       var m = L.circleMarker(center, {
         radius: 6,
@@ -138,6 +142,7 @@
     if (p.status === "mismatch") {
       h += "<br>OSM name: " + (p.osm_name ? esc(p.osm_name) : "<em>none</em>");
     }
+    if (p.detail) { h += "<br>" + esc(p.detail); }
     var links = osmPairHtml(f);
     if (links) { h += "<br>" + links; }
     return h;
@@ -155,6 +160,7 @@
         ? (p.osm_name ? '<span class="osm-name">' + esc(p.osm_name) + "</span>" : "") +
           '<span class="osm-links">' + links + "</span>"
         : '<span class="osm-blank">&mdash;</span>';
+      if (p.detail) { osm = '<span class="detail">' + esc(p.detail) + "</span>" + osm; }
       return '<tr data-i="' + p._i + '" data-status="' + p.status +
         '" data-name="' + esc((p.name || "").toLowerCase()) + '">' +
         "<td>" + esc(p.name || "(unnamed)") + "</td>" +
@@ -179,6 +185,9 @@
     if (highlight) { map.removeLayer(highlight); }
     highlight = L.geoJSON(f, {
       style: { color: "#0a7", weight: 3, fill: false },
+      pointToLayer: function (_f, ll) {
+        return L.circleMarker(ll, { radius: 12, color: "#0a7", weight: 3, fill: false });
+      },
     }).addTo(map);
     map.fitBounds(highlight.getBounds(), { maxZoom: 17, padding: [40, 40] });
     if (markers[i]) { markers[i].openPopup(); }
@@ -198,6 +207,10 @@
       mismatch: document.getElementById("show-mismatch"),
       unnamed: document.getElementById("show-unnamed"),
       placeholder: document.getElementById("show-placeholder"),
+      notoilet: document.getElementById("show-notoilet"),
+      nosplashpad: document.getElementById("show-nosplashpad"),
+      nodiscgolf: document.getElementById("show-nodiscgolf"),
+      nocapacity: document.getElementById("show-nocapacity"),
     };
     var filter = document.getElementById("filter");
 

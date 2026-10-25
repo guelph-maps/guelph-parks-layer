@@ -51,7 +51,10 @@ the same audit finding, tiered 4 / conflate.
   interactive map and a filterable table. OSM areas are pulled from Overpass;
   matching is by spatial overlap (see [`src/compare.py`](src/compare.py)).
   The same page lists the **park amenities** the City records and OSM lacks
-  &mdash; see [Park amenities](#park-amenities). Its
+  &mdash; see [Park amenities](#park-amenities). Each row links to
+  openstreetmap.org, iD and JOSM (<kbd>O</kbd>, <kbd>I</kbd>, <kbd>J</kbd> for
+  the selected row); the JOSM link needs JOSM running with Preferences &rarr;
+  Remote Control enabled. Its
   [history page](https://guelph-maps.github.io/guelph-parks-layer/gaps/history.html)
   charts those counts over time, one point per weekly run.
 

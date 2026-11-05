@@ -222,3 +222,13 @@ def test_a_stale_comparison_says_so_on_the_page():
 
 def test_a_fresh_comparison_adds_nothing():
     assert site._osm_note({"osm_stale": False, "osm_date": "2026-08-17"}) == ""
+
+
+def test_a_small_parks_centroid_lands_inside_it():
+    # Summed raw at lon/lat, a third of OSM's rings here came out over 5 m off;
+    # the worst was over 2 km from its own park.
+    x0, y0, w, h = -80.2483, 43.5448, 0.0002, 0.0004
+    ring = [(x0, y0), (x0 + w, y0), (x0 + w, y0 + h), (x0, y0 + h), (x0, y0)]
+    cx, cy = compare._centroid(ring)
+    assert cx == pytest.approx(x0 + w / 2, abs=1e-9)
+    assert cy == pytest.approx(y0 + h / 2, abs=1e-9)

@@ -482,12 +482,18 @@ def _bbox_overlap(a, b):
 
 
 def _centroid(pts):
-    """Area-weighted polygon centroid (shoelace); mean for degenerate rings."""
+    """Area-weighted polygon centroid (shoelace); mean for degenerate rings.
+
+    Translated to the first vertex before summing: at lon/lat a small park's
+    cross-products are differences of numbers near 3,500, and summed raw they
+    lose the centroid to float cancellation.
+    """
     n = len(pts)
+    ox, oy = pts[0]
     area = cx = cy = 0.0
     for i in range(n):
-        x0, y0 = pts[i]
-        x1, y1 = pts[(i + 1) % n]
+        x0, y0 = pts[i][0] - ox, pts[i][1] - oy
+        x1, y1 = pts[(i + 1) % n][0] - ox, pts[(i + 1) % n][1] - oy
         cross = x0 * y1 - x1 * y0
         area += cross
         cx += (x0 + x1) * cross
@@ -495,7 +501,7 @@ def _centroid(pts):
     if area == 0:
         return (sum(p[0] for p in pts) / n, sum(p[1] for p in pts) / n)
     area *= 0.5
-    return (cx / (6 * area), cy / (6 * area))
+    return (cx / (6 * area) + ox, cy / (6 * area) + oy)
 
 
 def _ring_area(pts):

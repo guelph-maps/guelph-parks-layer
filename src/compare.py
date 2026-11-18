@@ -156,11 +156,7 @@ def _try_overpass(url, query, min_elements=None):
         url, query, user_agent=config.USER_AGENT,
         timeout=config.OVERPASS_TIMEOUT,
         min_elements=min_elements,
-        max_age_days=config.OSM_MAX_AGE_DAYS,
-        # This layer still accepts a reply that carries no timestamp_osm_base,
-        # as it always has. The sidewalks, bike, gardens and water layers
-        # refuse one; dropping this line makes this layer do the same.
-        allow_undated=True)
+        max_age_days=config.OSM_MAX_AGE_DAYS)
 
 
 def _load_cache(cache_path=None, fetch_path=None):

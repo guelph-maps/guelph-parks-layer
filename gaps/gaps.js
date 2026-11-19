@@ -1,0 +1,304 @@
+// Gap-review page: City raster layer + gap markers, driven by a side table.
+
+(function () {
+  "use strict";
+
+  var COLORS = {
+    missing: "#7048e8", mismatch: "#1c7ed6", unnamed: "#e8590c",
+    placeholder: "#868e96", notoilet: "#c2255c", nosplashpad: "#1098ad",
+    nodiscgolf: "#5c940d", nocapacity: "#862e9c",
+  };
+  var map;
+  var features = [];
+  var markers = [];      // CircleMarker per feature, indexed like features
+  var highlight = null;  // outline of the currently selected gap
+  var selectedRow = null;
+  var selectedIndex = null;  // feature index of the current selection
+  var JOSM = "http://127.0.0.1:8111/load_and_zoom";
+  var PAD_M = 30;  // metres of padding around a gap for the JOSM download box
+
+  function init() {
+    var el = document.getElementById("gap-map");
+    if (!el || typeof L === "undefined" || !el.dataset.geojson) {
+      return;
+    }
+    map = L.map(el).setView([43.5448, -80.2482], 12);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">' +
+        "OpenStreetMap</a> contributors",
+    }).addTo(map);
+    if (el.dataset.raster) {
+      L.tileLayer(el.dataset.raster, {
+        minZoom: 13, maxNativeZoom: 17, maxZoom: 19, opacity: 0.85,
+      }).addTo(map);
+    }
+
+    fetch(el.dataset.geojson)
+      .then(function (r) { return r.json(); })
+      .then(render)
+      .catch(function (e) {
+        el.innerHTML = '<p style="padding:1rem">Could not load gaps.geojson.</p>';
+        console.error(e);
+      });
+  }
+
+  function render(data) {
+    features = data.features || [];
+
+    features.forEach(function (f, i) {
+      f.properties._i = i;
+      // An amenity gap carries its own marker point (the lot, the restroom),
+      // so several gaps in one park do not stack on its centroid.
+      var pt = f.properties.point;
+      var center = pt ? [pt[1], pt[0]] : centroid(f.geometry);
+      f._center = center;
+      var m = L.circleMarker(center, {
+        radius: 6,
+        color: "#fff",
+        weight: 1,
+        fillColor: COLORS[f.properties.status] || "#888",
+        fillOpacity: 0.95,
+      });
+      m.bindPopup(popupHtml(f));
+      m.on("click", function () { select(i, false); });
+      m.addTo(map);
+      markers[i] = m;
+    });
+
+    buildTable();
+    wireControls();
+  }
+
+  // Centroid of a (Multi)Polygon's first/largest outer ring -> [lat, lng].
+  function centroid(geom) {
+    var rings = geom.type === "Polygon"
+      ? [geom.coordinates[0]]
+      : geom.coordinates.map(function (poly) { return poly[0]; });
+    var best = rings[0], bestArea = -1;
+    rings.forEach(function (r) {
+      var a = Math.abs(ringArea(r));
+      if (a > bestArea) { bestArea = a; best = r; }
+    });
+    var n = best.length, area = 0, cx = 0, cy = 0;
+    for (var i = 0; i < n; i++) {
+      var p0 = best[i], p1 = best[(i + 1) % n];
+      var cross = p0[0] * p1[1] - p1[0] * p0[1];
+      area += cross;
+      cx += (p0[0] + p1[0]) * cross;
+      cy += (p0[1] + p1[1]) * cross;
+    }
+    if (area === 0) {
+      var sx = 0, sy = 0;
+      best.forEach(function (p) { sx += p[0]; sy += p[1]; });
+      return [sy / n, sx / n];
+    }
+    area *= 0.5;
+    return [cy / (6 * area), cx / (6 * area)];
+  }
+
+  function ringArea(r) {
+    var a = 0, n = r.length;
+    for (var i = 0; i < n; i++) {
+      var p0 = r[i], p1 = r[(i + 1) % n];
+      a += p0[0] * p1[1] - p1[0] * p0[1];
+    }
+    return a / 2;
+  }
+
+  // Where to send the user for a feature: the openstreetmap.org view, the
+  // iD editor and JOSM remote control. Points at the existing way when there
+  // is one, else the centroid.
+  function osmTargets(f) {
+    var p = f.properties;
+    var m = p.osm_url && p.osm_url.match(/(node|way|relation)\/(\d+)/);
+    if (m) {
+      return {
+        osm: p.osm_url,
+        id: "https://www.openstreetmap.org/edit?" + m[1] + "=" + m[2],
+        josm: josmUrl([f.geometry.coordinates, p.point || []], m[1] + m[2]),
+      };
+    }
+    var c = f._center;
+    if (!c) { return null; }
+    var ll = c[0].toFixed(5) + "/" + c[1].toFixed(5);
+    return {
+      osm: "https://www.openstreetmap.org/#map=18/" + ll,
+      id: "https://www.openstreetmap.org/edit#map=18/" + ll,
+      josm: josmUrl([f.geometry.coordinates, p.point || []], null),
+    };
+  }
+
+  // JOSM remote control: download the box around ``coords`` (nested GeoJSON
+  // coordinate arrays: the park, plus an amenity gap's marker point) padded
+  // PAD_M, and select the OSM object, if any.
+  function josmUrl(coords, select) {
+    var s = 90, w = 180, n = -90, e = -180;
+    (function walk(c) {
+      if (typeof c[0] === "number") {
+        s = Math.min(s, c[1]); n = Math.max(n, c[1]);
+        w = Math.min(w, c[0]); e = Math.max(e, c[0]);
+      } else {
+        c.forEach(walk);
+      }
+    })(coords);
+    var dLat = PAD_M / 111320;
+    var dLon = PAD_M / (111320 * Math.cos((s + n) / 2 * Math.PI / 180));
+    return JOSM + "?left=" + (w - dLon).toFixed(6) +
+      "&right=" + (e + dLon).toFixed(6) + "&top=" + (n + dLat).toFixed(6) +
+      "&bottom=" + (s - dLat).toFixed(6) +
+      (select ? "&select=" + select : "") +
+      "&changeset_source=" + encodeURIComponent("City of Guelph Park Boundary");
+  }
+
+  // "OSM · iD · JOSM" links shared by the table and the popups. JOSM opens as
+  // a plain navigation in one reused tab named "josm", not a fetch: browsers
+  // gate background requests from a public page to localhost, not a click.
+  function osmPairHtml(f) {
+    var t = osmTargets(f);
+    if (!t) { return ""; }
+    return '<a href="' + t.osm + '" target="_blank" rel="noopener" ' +
+      'title="View on openstreetmap.org (hotkey: O)">OSM</a> &middot; ' +
+      '<a href="' + t.id + '" target="_blank" rel="noopener" ' +
+      'title="Open in the iD editor (hotkey: I)">iD</a> &middot; ' +
+      '<a href="' + esc(t.josm) + '" class="josm" target="josm" ' +
+      'title="Load this area into JOSM via remote control (hotkey: J)">JOSM</a>';
+  }
+
+  function popupHtml(f) {
+    var p = f.properties;
+    var h = "<strong>" + esc(p.name || "(unnamed)") + "</strong><br>" +
+      esc(p.address || "") + " &middot; " + p.status;
+    if (p.status === "mismatch") {
+      h += "<br>OSM name: " + (p.osm_name ? esc(p.osm_name) : "<em>none</em>");
+    }
+    if (p.detail) { h += "<br>" + esc(p.detail); }
+    var links = osmPairHtml(f);
+    if (links) { h += "<br>" + links; }
+    return h;
+  }
+
+  function buildTable() {
+    var tbody = document.querySelector("#gap-table tbody");
+    var rows = features.slice().sort(function (a, b) {
+      return (a.properties.name || "").localeCompare(b.properties.name || "");
+    });
+    tbody.innerHTML = rows.map(function (f) {
+      var p = f.properties;
+      var links = osmPairHtml(f);
+      var osm = links
+        ? (p.osm_name ? '<span class="osm-name">' + esc(p.osm_name) + "</span>" : "") +
+          '<span class="osm-links">' + links + "</span>"
+        : '<span class="osm-blank">&mdash;</span>';
+      if (p.detail) { osm = '<span class="detail">' + esc(p.detail) + "</span>" + osm; }
+      return '<tr data-i="' + p._i + '" data-status="' + p.status +
+        '" data-name="' + esc((p.name || "").toLowerCase()) + '">' +
+        "<td>" + esc(p.name || "(unnamed)") + "</td>" +
+        "<td>" + esc(p.address || "") + "</td>" +
+        '<td class="status-' + p.status + '">' + p.status + "</td>" +
+        "<td>" + osm + "</td></tr>";
+    }).join("");
+
+    tbody.addEventListener("click", function (ev) {
+      if (ev.target.closest("a")) { return; }  // let OSM links work
+      var tr = ev.target.closest("tr");
+      if (tr) { select(parseInt(tr.dataset.i, 10), true); }
+    });
+  }
+
+  // Select a gap: outline it, fit the map, open its popup, mark its row.
+  function select(i, fromTable) {
+    var f = features[i];
+    if (!f) { return; }
+    selectedIndex = i;
+
+    if (highlight) { map.removeLayer(highlight); }
+    highlight = L.geoJSON(f, {
+      style: { color: "#0a7", weight: 3, fill: false },
+      pointToLayer: function (_f, ll) {
+        return L.circleMarker(ll, { radius: 12, color: "#0a7", weight: 3, fill: false });
+      },
+    }).addTo(map);
+    map.fitBounds(highlight.getBounds(), { maxZoom: 17, padding: [40, 40] });
+    if (markers[i]) { markers[i].openPopup(); }
+
+    if (selectedRow) { selectedRow.classList.remove("selected"); }
+    var tr = document.querySelector('#gap-table tr[data-i="' + i + '"]');
+    if (tr) {
+      tr.classList.add("selected");
+      selectedRow = tr;
+      if (!fromTable) { tr.scrollIntoView({ block: "center" }); }
+    }
+  }
+
+  function wireControls() {
+    var boxes = {
+      missing: document.getElementById("show-missing"),
+      mismatch: document.getElementById("show-mismatch"),
+      unnamed: document.getElementById("show-unnamed"),
+      placeholder: document.getElementById("show-placeholder"),
+      notoilet: document.getElementById("show-notoilet"),
+      nosplashpad: document.getElementById("show-nosplashpad"),
+      nodiscgolf: document.getElementById("show-nodiscgolf"),
+      nocapacity: document.getElementById("show-nocapacity"),
+    };
+    var filter = document.getElementById("filter");
+
+    function statusOn(status) {
+      var b = boxes[status];
+      return b ? b.checked : true;
+    }
+
+    function apply() {
+      var q = filter.value.trim().toLowerCase();
+
+      features.forEach(function (f) {
+        var p = f.properties;
+        var hit = statusOn(p.status) &&
+          (!q || (p.name || "").toLowerCase().indexOf(q) > -1);
+        var m = markers[p._i];
+        if (hit && !map.hasLayer(m)) { map.addLayer(m); }
+        else if (!hit && map.hasLayer(m)) { map.removeLayer(m); }
+      });
+
+      var rows = document.querySelectorAll("#gap-table tbody tr");
+      Array.prototype.forEach.call(rows, function (tr) {
+        var hit = statusOn(tr.dataset.status) &&
+          (!q || tr.dataset.name.indexOf(q) > -1);
+        tr.style.display = hit ? "" : "none";
+      });
+    }
+
+    Object.keys(boxes).forEach(function (k) {
+      if (boxes[k]) { boxes[k].addEventListener("change", apply); }
+    });
+    filter.addEventListener("input", apply);
+    apply();
+
+    // O / I / J open the selected gap on openstreetmap.org, in iD or in JOSM.
+    document.addEventListener("keydown", function (ev) {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) { return; }
+      if (/^(input|textarea|select)$/i.test(ev.target.tagName)) { return; }
+      var key = ev.key.toLowerCase();
+      if (key !== "o" && key !== "i" && key !== "j") { return; }
+      if (selectedIndex == null) { return; }
+      var t = osmTargets(features[selectedIndex]);
+      if (!t) { return; }
+      ev.preventDefault();
+      if (key === "j") {
+        window.open(t.josm, "josm");
+      } else {
+        window.open(key === "o" ? t.osm : t.id, "_blank", "noopener");
+      }
+    });
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();

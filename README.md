@@ -13,7 +13,7 @@ indexes every Guelph project. Its sibling layer is
 address points, rendered as house-number labels, from the same organisation.
 
 It is a sibling of
-[toronto-parks-layer](https://github.com/skfd/toronto-parks-layer), which is the
+[toronto-parks-layer](https://github.com/toronto-maps/toronto-parks-layer), which is the
 template this was cloned from: the same `download -> slim -> compare -> vector
 -> raster -> site -> publish` pipeline, pointed at Guelph's park boundaries.
 A person who knows one project knows the other; the only step that differs in

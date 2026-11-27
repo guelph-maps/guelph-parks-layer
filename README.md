@@ -56,9 +56,9 @@ the same audit finding, tiered 4 / conflate.
   the selected row); the JOSM link needs JOSM running with Preferences &rarr;
   Remote Control enabled. Its
   [history page](https://guelph-maps.github.io/guelph-parks-layer/gaps/history.html)
-  charts those counts over time, one point per weekly run.
+  charts those counts over time, one point per daily run.
 
-All of it is published to GitHub Pages and rebuilt weekly.
+All of it is published to GitHub Pages and rebuilt daily.
 
 ## What is kept
 
@@ -256,15 +256,17 @@ in the GitHub repo, set **Settings &rarr; Pages &rarr; Source** to the
 Run as Administrator:
 
 ```powershell
-.\schedule-add.ps1      # registers a weekly task "kk-GuelphParksLayer", Tuesdays 16:30
+.\schedule-add.ps1      # registers a daily task "kk-GuelphParksLayer", 21:15
 .\schedule-remove.ps1   # unregisters it
 ```
 
-Weekly is enough &mdash; 126 park polygons change rarely, and the City's service
-carries no edit date to poll anyway; it is the gap page, which diffs against
-live OSM, that moves week to week. Tuesday keeps this clear of
-`toronto-parks-layer`'s Monday slot, so the two never drive tippecanoe in the
-same WSL instance at once.
+Daily, though 126 park polygons change rarely: it is the gap page, which diffs
+against live OSM, that moves, and a day-old page is what mappers want after an
+evening's edits. A day with no City change costs nothing extra &mdash; the
+download keeps the existing dated file when the features hash the same, and
+history replaces a same-day row. 21:15 keeps clear of the siblings' weekly
+16:30 and 19:30 tippecanoe slots and their retries, so no two drive tippecanoe
+in the same WSL instance at once.
 
 ### The link gate
 
@@ -272,7 +274,7 @@ Both network steps &mdash; the dataset query and the `gh-pages` push &mdash;
 run behind `addressvault.net`, the same offline/metered gate the address vault
 pulls behind. A dead link is not a build failure: `run.py` exits **75**
 (`EX_TEMPFAIL`), nothing is written, and the task's restart-on-failure retries
-three times half an hour apart rather than leaving a seven-day gap. It does not
+three times half an hour apart rather than leaving a day's gap. It does not
 wait the link out, since the task carries a hard `ExecutionTimeLimit` that would
 kill a long wait anyway.
 
@@ -283,8 +285,8 @@ OSM data date, and the missing / mismatch / unnamed / placeholder counts -- and
 the site step charts it at [`/gaps/history.html`](https://guelph-maps.github.io/guelph-parks-layer/gaps/history.html),
 with the rows published beside it as `gaps/history.jsonl`. That is the whole
 record the observer keeps: the tiles and the gap list are rebuilt from scratch
-and force-pushed each week, but this file only grows, so the scheduled
-`update` extends the chart by one point every Tuesday. A run that fell back to
+and force-pushed each day, but this file only grows, so the scheduled
+`update` extends the chart by one point a day. A run that fell back to
 cached OSM is not recorded; it observed nothing new, and a point it drew would
 be a false plateau. A live row's OSM date is the mirror's declared
 `timestamp_osm_base`, so a mirror answering with old data shows as such.
@@ -295,7 +297,7 @@ like on each past Monday (an attic query, `[date:...]`, which only that
 instance is relied on for) and re-runs the comparison against it, adding rows
 marked `attic`. It is paced -- one attempt per date, 30 s between dates, and
 it stops at the first unanswered query -- because attic queries cost the
-instance more than live ones and this is a one-off, not the weekly build. Dates
+instance more than live ones and this is a one-off, not the scheduled build. Dates
 already on record are skipped, so an interrupted run resumes when re-run.
 The default range starts 2026-06-01, the same Monday the Toronto sibling's
 chart starts on; `--since`, `--until`, `--every` and `--pause` adjust it.

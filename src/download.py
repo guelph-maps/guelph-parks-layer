@@ -18,8 +18,8 @@ The output contract is unchanged: one dated GeoJSON FeatureCollection in data/,
 which is all `slim` and the rest of the pipeline know about.
 
 Every request is gated on a usable link first (``addressvault.net``, the same
-gate the address vault pulls behind). The weekly trigger is what makes that
-worth doing: a run lost to a dead link is not retried until next Monday.
+gate the address vault pulls behind). A run lost to a dead link is not
+retried until the next day's trigger, so finding out early is worth doing.
 """
 
 import hashlib
@@ -34,7 +34,7 @@ from layerkit import citydata
 from src import config
 
 # The Park Boundary layer is 126 polygons, ~1.5 MB of GeoJSON -- a retry costs
-# a couple of seconds when the link is healthy and buys back a week when it is
+# a couple of seconds when the link is healthy and buys back a day when it is
 # not.
 RETRIES = 3
 RETRY_WAIT = 30

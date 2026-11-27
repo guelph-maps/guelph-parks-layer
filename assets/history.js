@@ -38,7 +38,7 @@
     if (!rows.length) {
       var p = document.createElement("p");
       p.className = "empty";
-      p.textContent = "No comparisons recorded yet. The first weekly build " +
+      p.textContent = "No comparisons recorded yet. The first build " +
         "adds a point; `python run.py backfill` reconstructs earlier weeks.";
       holder.appendChild(p);
       return;
@@ -92,7 +92,7 @@
       "aria-label": "Gap counts per comparison run; the table below has the values" });
 
     // Shade each run of reconstructed weeks, so the chart says which points
-    // the weekly build saw and which were rebuilt from OSM's history.
+    // the scheduled build saw and which were rebuilt from OSM's history.
     atticSpans(rows).forEach(function (span) {
       var a = sx(xs[span[0]]) - (span[0] ? 0 : 6);
       var b = sx(xs[span[1]]) + (span[1] === rows.length - 1 ? 6 : 0);
